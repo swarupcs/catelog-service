@@ -66,15 +66,14 @@ export class ProductController {
 
         const { productId } = req.params;
 
-        if ((req as AuthRequest).auth.role === Roles.MANAGER) {
-            const product = await this.productService.getProduct(productId);
-            if (!product) {
-                return next(createHttpError(404, "Product not found"));
-            }
+        const product = await this.productService.getProduct(productId);
+        if (!product) {
+            return next(createHttpError(404, "Product not found"));
+        }
 
+        if ((req as AuthRequest).auth.role !== Roles.ADMIN) {
             const tenant = (req as AuthRequest).auth.tenant;
-
-            if (product.tenantId !== String(tenant)) {
+            if (product.tenantId !== tenant) {
                 return next(
                     createHttpError(
                         403,
@@ -88,7 +87,7 @@ export class ProductController {
         let oldImage: string | undefined;
 
         if (req.files?.image) {
-            oldImage = await this.productService.getProductImage(productId);
+            oldImage = product.image;
 
             const image = req.files.image as UploadedFile;
             imageName = uuidv4();
@@ -98,7 +97,7 @@ export class ProductController {
                 fileData: image.data.buffer,
             });
 
-            await this.storage.delete(oldImage!);
+            await this.storage.delete(oldImage);
         }
 
         const {
